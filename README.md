@@ -27,7 +27,7 @@ Sistema automatico di protezione e monitoraggio dei Murazzi di Torino sul fiume 
 | Microcontrollore | Arduino UNO Q | Cervello del sistema |
 | Carrier | Arduino Media Carrier | Hub Qwiic + connettività |
 | Sensore livello acqua | Modulino Distance (VL53L4CD) | Misura distanza ToF fino a 1200mm via I2C/Qwiic |
-| Sensore movimento | Da definire | Rileva movimento sul fiume per attivare la camera |
+| Sensore movimento | PIR (HC-SR501) | Rileva movimento sul fiume per attivare la camera |
 | Servo barriera | SG90 | Alza/abbassa barriera murazzi (stampa 3D) |
 | Servo paratia | SG90 | Direziona detriti al centro del fiume |
 | Camera | Webcam USB | Acquisizione immagini per classificazione AI |
@@ -36,7 +36,7 @@ Sistema automatico di protezione e monitoraggio dei Murazzi di Torino sul fiume 
 
 ```
 Modulino Distance  → Qwiic connector (Media Carrier)
-Sensore movimento  → Pin 7  (da aggiornare con il modulo scelto)
+PIR OUT            → Pin 7  | VCC → 5V | GND → GND
 Servo barriera     → Pin 5  | VCC → 5V | GND → GND
 Servo paratia      → Pin 6  | VCC → 5V | GND → GND
 ```

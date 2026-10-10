@@ -2,14 +2,14 @@
 // Sistema di Sorveglianza Murazzi - HackTurin 2026
 // Hardware: Arduino UNO Q + Arduino Media Carrier
 // Modulino Distance  (VL53L4CD  - Time of Flight, I2C/Qwiic)
-// Sensore movimento  (da definire)
+// Sensore movimento  PIR (HC-SR501 o compatibile)
 // Servo SG90 x2 (barriera murazzi + paratia detriti)
 //
 // COLLEGAMENTO:
 //   Modulino Distance  → connettore Qwiic della Media Carrier
-//   Sensore movimento  → Pin 7 (da aggiornare in base al modulo scelto)
-//   Servo barriera     → Pin 5
-//   Servo paratia      → Pin 6
+//   PIR OUT            → Pin 7 | VCC → 5V | GND → GND
+//   Servo barriera     → Pin 5 | VCC → 5V | GND → GND
+//   Servo paratia      → Pin 6 | VCC → 5V | GND → GND
 //   LED alert          → Pin 13 (integrato)
 //
 // LIBRERIE NECESSARIE (Arduino IDE → Gestione librerie):
@@ -23,8 +23,8 @@
 // --- OGGETTI MODULINO ---
 ModulinoDistance distance;   // VL53L4CD - livello acqua
 
-// --- SENSORE MOVIMENTO (da definire) ---
-#define PIN_MOVIMENTO   7    // aggiornare in base al modulo scelto
+// --- SENSORE MOVIMENTO PIR ---
+#define PIN_PIR   7
 
 // --- SERVO ---
 Servo servoBarriera;
@@ -50,13 +50,13 @@ Servo servoParatia;
 
 // --- TIMING ---
 #define INTERVALLO_MS         1000  // lettura sensori ogni secondo
-#define TIMEOUT_MOVIMENTO_MS  8000  // movimento rimane "attivo" per 8 secondi
+#define TIMEOUT_PIR_MS        8000  // PIR rimane "attivo" per 8 secondi
 
 // --- VARIABILI ---
-bool     barriera_alzata     = false;
-bool     movimento_attivo    = false;
-unsigned long ultimo_loop    = 0;
-unsigned long ultimo_movimento = 0;
+bool     barriera_alzata   = false;
+bool     movimento_attivo  = false;
+unsigned long ultimo_loop  = 0;
+unsigned long ultimo_pir   = 0;
 
 // ============================================================
 void setup() {
@@ -66,8 +66,8 @@ void setup() {
   Modulino.begin();
   distance.begin();
 
-  // Sensore movimento (placeholder - aggiornare in base al modulo)
-  pinMode(PIN_MOVIMENTO, INPUT);
+  // PIR
+  pinMode(PIN_PIR, INPUT);
 
   // Servo
   servoBarriera.attach(PIN_SERVO_BARRIERA);
@@ -96,16 +96,12 @@ void loop() {
 
   String livello = valuta_livello(distanza_mm);
 
-  // --- 2. LETTURA MOVIMENTO (placeholder) ---
-  // TODO: aggiornare con la libreria del modulo scelto
-  bool segnale_movimento = digitalRead(PIN_MOVIMENTO) == HIGH;
-
-  if (segnale_movimento) {
-    ultimo_movimento = ora;
+  // --- 2. LETTURA PIR ---
+  if (digitalRead(PIN_PIR) == HIGH) {
+    ultimo_pir = ora;
   }
-
-  // Mantieni movimento "attivo" per TIMEOUT_MOVIMENTO_MS
-  movimento_attivo = (ora - ultimo_movimento < TIMEOUT_MOVIMENTO_MS);
+  // Rimane "attivo" per TIMEOUT_PIR_MS dopo l'ultimo rilevamento
+  movimento_attivo = (ora - ultimo_pir < TIMEOUT_PIR_MS);
 
   // --- 3. GESTIONE BARRIERA MURAZZI ---
   gestisci_barriera(livello);
