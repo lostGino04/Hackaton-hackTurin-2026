@@ -1,86 +1,81 @@
 // ============================================================
 // Sistema di Sorveglianza Murazzi - HackTurin 2026
-// Hardware: Arduino UNO Q
-// Sensori: HC-SR04 (livello acqua), PIR (movimento)
-// Attuatori: 2x Servo SG90 (barriera murazzi + paratia detriti)
-// ============================================================
+// Hardware: Arduino UNO Q + Arduino Media Carrier
+// Modulino Distance  (VL53L4CD  - Time of Flight, I2C/Qwiic)
+// Sensore movimento  (da definire)
+// Servo SG90 x2 (barriera murazzi + paratia detriti)
 //
-// PINOUT:
-//   HC-SR04  TRIG → Pin 9
-//   HC-SR04  ECHO → Pin 8
-//   PIR OUT       → Pin 7
-//   Servo BARRIERA → Pin 5  (alza barriera murazzi se piena)
-//   Servo PARATIA  → Pin 6  (direziona detriti al centro)
-//   LED ALERT      → Pin 13 (LED integrato)
+// COLLEGAMENTO:
+//   Modulino Distance  → connettore Qwiic della Media Carrier
+//   Sensore movimento  → Pin 7 (da aggiornare in base al modulo scelto)
+//   Servo barriera     → Pin 5
+//   Servo paratia      → Pin 6
+//   LED alert          → Pin 13 (integrato)
 //
-// COLLEGAMENTO SERVO SG90:
-//   Filo rosso   → 5V
-//   Filo marrone → GND
-//   Filo arancio → Pin segnale (5 o 6)
+// LIBRERIE NECESSARIE (Arduino IDE → Gestione librerie):
+//   - Modulino  (by Arduino)
+//   - Servo     (inclusa nell'IDE)
 // ============================================================
 
+#include <Modulino.h>
 #include <Servo.h>
 
-// --- PIN ---
-#define TRIG_PIN        9
-#define ECHO_PIN        8
-#define PIR_PIN         7
-#define PIN_SERVO_BARRIERA 5
-#define PIN_SERVO_PARATIA  6
-#define LED_ALERT       13
+// --- OGGETTI MODULINO ---
+ModulinoDistance distance;   // VL53L4CD - livello acqua
 
-// --- SOGLIE LIVELLO ACQUA ---
-// Distanza misurata dall'HC-SR04 al pelo dell'acqua.
-// Più l'acqua sale, più la distanza DIMINUISCE.
-#define SOGLIA_PIENA_CM      20   // < 20cm → piena, barriera su
-#define SOGLIA_ATTENZIONE_CM 40   // < 40cm → attenzione
+// --- SENSORE MOVIMENTO (da definire) ---
+#define PIN_MOVIMENTO   7    // aggiornare in base al modulo scelto
 
-// --- POSIZIONI SERVO BARRIERA (stampa 3D) ---
-#define BARRIERA_GIU   0    // gradi → barriera abbassata (accesso libero)
-#define BARRIERA_SU    90   // gradi → barriera alzata (accesso bloccato)
-
-// --- POSIZIONI SERVO PARATIA (flipper stampa 3D) ---
-#define PARATIA_RIPOSO  90  // gradi → posizione neutra
-#define PARATIA_SINISTRA 45 // gradi → devia detriti da sinistra verso centro
-#define PARATIA_DESTRA  135 // gradi → devia detriti da destra verso centro
-#define PARATIA_DURATA  3000 // ms → quanto resta in posizione prima di tornare
-
-// --- TIMING ---
-#define INTERVALLO_SENSORI_MS  1000  // lettura sensori ogni secondo
-#define TIMEOUT_PIR_MS        10000  // PIR rimane "attivo" per 10 secondi
-
-// --- COMANDI DA PYTHON (via Serial) ---
-// Python manda questi comandi dopo l'analisi AI della camera:
-// "DETRITO_SX"  → paratia verso sinistra (detrito arriva da sinistra)
-// "DETRITO_DX"  → paratia verso destra
-// "IMBARCAZIONE" → nessuna azione meccanica, solo log
-
-// ============================================================
+// --- SERVO ---
 Servo servoBarriera;
 Servo servoParatia;
 
-float    distanza_cm        = 0;
-bool     movimento_rilevato = false;
-bool     barriera_alzata    = false;
-unsigned long ultimo_sensore  = 0;
-unsigned long ultimo_pir      = 0;
+#define PIN_SERVO_BARRIERA  5
+#define PIN_SERVO_PARATIA   6
+#define LED_ALERT           13
+
+// --- SOGLIE LIVELLO ACQUA ---
+// Il VL53L4CD misura in millimetri (range 0-1200mm)
+// Più l'acqua sale, più la distanza DIMINUISCE
+#define SOGLIA_PIENA_MM       200   // < 200mm (~20cm) → piena, barriera su
+#define SOGLIA_ATTENZIONE_MM  400   // < 400mm (~40cm) → attenzione
+
+// --- POSIZIONI SERVO ---
+#define BARRIERA_GIU        0    // barriera abbassata (accesso libero)
+#define BARRIERA_SU         90   // barriera alzata (accesso bloccato)
+#define PARATIA_RIPOSO      90   // paratia neutra
+#define PARATIA_SINISTRA    45   // devia detriti da sinistra verso centro
+#define PARATIA_DESTRA      135  // devia detriti da destra verso centro
+#define PARATIA_DURATA_MS   3000 // ms in posizione prima di tornare a riposo
+
+// --- TIMING ---
+#define INTERVALLO_MS         1000  // lettura sensori ogni secondo
+#define TIMEOUT_MOVIMENTO_MS  8000  // movimento rimane "attivo" per 8 secondi
+
+// --- VARIABILI ---
+bool     barriera_alzata     = false;
+bool     movimento_attivo    = false;
+unsigned long ultimo_loop    = 0;
+unsigned long ultimo_movimento = 0;
 
 // ============================================================
 void setup() {
   Serial.begin(9600);
 
-  pinMode(TRIG_PIN,  OUTPUT);
-  pinMode(ECHO_PIN,  INPUT);
-  pinMode(PIR_PIN,   INPUT);
-  pinMode(LED_ALERT, OUTPUT);
+  // Inizializza bus I2C e Modulino
+  Modulino.begin();
+  distance.begin();
 
+  // Sensore movimento (placeholder - aggiornare in base al modulo)
+  pinMode(PIN_MOVIMENTO, INPUT);
+
+  // Servo
   servoBarriera.attach(PIN_SERVO_BARRIERA);
   servoParatia.attach(PIN_SERVO_PARATIA);
-
-  // Posizione iniziale
   servoBarriera.write(BARRIERA_GIU);
   servoParatia.write(PARATIA_RIPOSO);
-  barriera_alzata = false;
+
+  pinMode(LED_ALERT, OUTPUT);
 
   Serial.println("=== Sistema Murazzi Po - HackTurin 2026 ===");
   Serial.println("PRONTO");
@@ -90,77 +85,61 @@ void setup() {
 void loop() {
   unsigned long ora = millis();
 
-  // 1. Lettura sensori a intervallo regolare
-  if (ora - ultimo_sensore >= INTERVALLO_SENSORI_MS) {
-    ultimo_sensore = ora;
+  if (ora - ultimo_loop < INTERVALLO_MS) return;
+  ultimo_loop = ora;
 
-    distanza_cm       = leggi_distanza();
-    movimento_rilevato = leggi_pir(ora);
-
-    String livello = valuta_livello(distanza_cm);
-
-    // 2. Gestione barriera murazzi
-    gestisci_barriera(livello);
-
-    // 3. Invia stato a Python
-    invia_stato(ora, distanza_cm, livello, movimento_rilevato);
+  // --- 1. LETTURA DISTANZA (livello acqua) ---
+  int distanza_mm = -1;
+  if (distance.available()) {
+    distanza_mm = distance.get();  // valore in mm
   }
 
-  // 4. Leggi comandi da Python (AI camera)
+  String livello = valuta_livello(distanza_mm);
+
+  // --- 2. LETTURA MOVIMENTO (placeholder) ---
+  // TODO: aggiornare con la libreria del modulo scelto
+  bool segnale_movimento = digitalRead(PIN_MOVIMENTO) == HIGH;
+
+  if (segnale_movimento) {
+    ultimo_movimento = ora;
+  }
+
+  // Mantieni movimento "attivo" per TIMEOUT_MOVIMENTO_MS
+  movimento_attivo = (ora - ultimo_movimento < TIMEOUT_MOVIMENTO_MS);
+
+  // --- 3. GESTIONE BARRIERA MURAZZI ---
+  gestisci_barriera(livello);
+
+  // --- 4. INVIA STATO A PYTHON ---
+  invia_stato(ora, distanza_mm, livello, movimento_attivo);
+
+  // --- 5. LEGGI COMANDI DA PYTHON (AI camera) ---
   if (Serial.available() > 0) {
-    String comando = Serial.readStringUntil('\n');
-    comando.trim();
-    gestisci_comando_ai(comando);
+    String cmd = Serial.readStringUntil('\n');
+    cmd.trim();
+    gestisci_comando_ai(cmd);
   }
 }
 
 // ============================================================
-// Misura distanza con HC-SR04
+// Valuta livello acqua in base alla distanza
 // ============================================================
-float leggi_distanza() {
-  digitalWrite(TRIG_PIN, LOW);
-  delayMicroseconds(2);
-  digitalWrite(TRIG_PIN, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(TRIG_PIN, LOW);
-
-  long durata = pulseIn(ECHO_PIN, HIGH, 30000);
-  if (durata == 0) return -1;
-
-  return (durata * 0.0343) / 2.0;
-}
-
-// ============================================================
-// Legge il PIR con timeout (evita falsi continui)
-// ============================================================
-bool leggi_pir(unsigned long ora) {
-  if (digitalRead(PIR_PIN) == HIGH) {
-    ultimo_pir = ora;
-    return true;
-  }
-  // Rimane "attivo" per TIMEOUT_PIR_MS dopo l'ultimo rilevamento
-  return (ora - ultimo_pir < TIMEOUT_PIR_MS);
-}
-
-// ============================================================
-// Valuta livello acqua
-// ============================================================
-String valuta_livello(float dist) {
-  if (dist < 0)                        return "ERRORE";
-  if (dist <= SOGLIA_PIENA_CM)         return "PIENA";
-  if (dist <= SOGLIA_ATTENZIONE_CM)    return "ATTENZIONE";
+String valuta_livello(int dist_mm) {
+  if (dist_mm < 0)                      return "ERRORE";
+  if (dist_mm <= SOGLIA_PIENA_MM)       return "PIENA";
+  if (dist_mm <= SOGLIA_ATTENZIONE_MM)  return "ATTENZIONE";
   return "NORMALE";
 }
 
 // ============================================================
-// Gestisce la barriera murazzi (stampa 3D + servo)
+// Gestisce la barriera murazzi (servo + LED)
 // ============================================================
 void gestisci_barriera(String livello) {
   if (livello == "PIENA" && !barriera_alzata) {
     servoBarriera.write(BARRIERA_SU);
     barriera_alzata = true;
     digitalWrite(LED_ALERT, HIGH);
-    Serial.println("CMD:BARRIERA_ALZATA");  // notifica Python
+    Serial.println("CMD:BARRIERA_ALZATA");
 
   } else if (livello == "NORMALE" && barriera_alzata) {
     servoBarriera.write(BARRIERA_GIU);
@@ -176,37 +155,33 @@ void gestisci_barriera(String livello) {
 }
 
 // ============================================================
-// Riceve comandi dall'AI Python e aziona la paratia
+// Riceve comandi da Python dopo analisi AI camera
 // ============================================================
 void gestisci_comando_ai(String cmd) {
   if (cmd == "DETRITO_SX") {
-    // Detrito arriva da sinistra → paratia inclina verso sinistra
-    // per spingere il detrito verso il centro del fiume
     servoParatia.write(PARATIA_SINISTRA);
     Serial.println("CMD:PARATIA_SX");
-    delay(PARATIA_DURATA);
+    delay(PARATIA_DURATA_MS);
     servoParatia.write(PARATIA_RIPOSO);
     Serial.println("CMD:PARATIA_RIPOSO");
 
   } else if (cmd == "DETRITO_DX") {
-    // Detrito arriva da destra → paratia inclina verso destra
     servoParatia.write(PARATIA_DESTRA);
     Serial.println("CMD:PARATIA_DX");
-    delay(PARATIA_DURATA);
+    delay(PARATIA_DURATA_MS);
     servoParatia.write(PARATIA_RIPOSO);
     Serial.println("CMD:PARATIA_RIPOSO");
 
   } else if (cmd == "IMBARCAZIONE") {
-    // Imbarcazione rilevata: nessuna azione meccanica
     Serial.println("CMD:IMBARCAZIONE_OK");
   }
 }
 
 // ============================================================
-// Invia stato CSV a Python ogni secondo
-// Formato: timestamp,distanza_cm,livello,movimento,barriera
+// Invia stato CSV a Python
+// Formato: DATI:timestamp,distanza_mm,livello,movimento,barriera
 // ============================================================
-void invia_stato(unsigned long ts, float dist, String livello, bool mov) {
+void invia_stato(unsigned long ts, int dist, String livello, bool mov) {
   Serial.print("DATI:");
   Serial.print(ts);       Serial.print(",");
   Serial.print(dist);     Serial.print(",");

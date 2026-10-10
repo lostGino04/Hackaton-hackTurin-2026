@@ -7,16 +7,16 @@ Sistema automatico di protezione e monitoraggio dei Murazzi di Torino sul fiume 
 ## Come funziona
 
 ### 1. Controllo piene → Barriera murazzi
-- Il sensore HC-SR04 misura continuamente il livello dell'acqua
-- Se supera la soglia critica → il servo SG90 alza la **barriera** (stampa 3D)
+- Il **Modulino Distance** (VL53L4CD) misura continuamente il livello dell'acqua via Time-of-Flight
+- Se la distanza scende sotto la soglia critica (acqua alta) → il servo SG90 alza la **barriera** (stampa 3D)
 - L'accesso ai murazzi viene automaticamente bloccato
 - Alert inviato al comune
 
 ### 2. Rilevamento detriti → Paratia flipper
-- Il sensore PIR rileva qualsiasi movimento sul fiume
+- Il sensore di movimento rileva attività sul fiume
 - La camera si accende e l'AI classifica l'oggetto:
-  - **Detrito** → il servo SG90 aziona la **paratia** (stampa 3D) che lo dirige verso il centro del fiume + alert al comune
-  - **Imbarcazione** → nessuna azione, solo log
+  - **Detrito** → il servo SG90 aziona la **paratia flipper** (stampa 3D) che lo dirige verso il centro del fiume + alert al comune
+  - **Imbarcazione** → nessuna azione meccanica, solo log
 
 ---
 
@@ -25,20 +25,25 @@ Sistema automatico di protezione e monitoraggio dei Murazzi di Torino sul fiume 
 | Componente | Modello | Funzione |
 |---|---|---|
 | Microcontrollore | Arduino UNO Q | Cervello del sistema |
-| Sensore livello acqua | HC-SR04 | Misura distanza dall'acqua |
-| Sensore movimento | PIR | Attiva la camera |
-| Servo barriera | SG90 | Alza/abbassa barriera murazzi (3D) |
-| Servo paratia | SG90 | Direziona detriti al centro |
-| Camera | Webcam USB | Acquisizione immagini per AI |
+| Carrier | Arduino Media Carrier | Hub Qwiic + connettività |
+| Sensore livello acqua | Modulino Distance (VL53L4CD) | Misura distanza ToF fino a 1200mm via I2C/Qwiic |
+| Sensore movimento | Da definire | Rileva movimento sul fiume per attivare la camera |
+| Servo barriera | SG90 | Alza/abbassa barriera murazzi (stampa 3D) |
+| Servo paratia | SG90 | Direziona detriti al centro del fiume |
+| Camera | Webcam USB | Acquisizione immagini per classificazione AI |
 
 ## Collegamento
 
 ```
-HC-SR04:   TRIG → Pin 9 | ECHO → Pin 8 | VCC → 5V | GND → GND
-PIR:       OUT  → Pin 7 | VCC  → 5V    | GND → GND
-Servo barriera → Pin 5  | VCC  → 5V    | GND → GND
-Servo paratia  → Pin 6  | VCC  → 5V    | GND → GND
+Modulino Distance  → Qwiic connector (Media Carrier)
+Sensore movimento  → Pin 7  (da aggiornare con il modulo scelto)
+Servo barriera     → Pin 5  | VCC → 5V | GND → GND
+Servo paratia      → Pin 6  | VCC → 5V | GND → GND
 ```
+
+## Librerie Arduino necessarie
+- **Modulino** by Arduino → Gestione librerie → cerca "Modulino"
+- **Servo** → già inclusa nell'IDE
 
 ## Struttura del progetto
 
@@ -54,12 +59,13 @@ Hackaton-hackTurin-2026/
 
 ## Setup
 
-### Arduino
+### 1. Arduino
 1. Apri `arduino/sorveglianza_po.ino` in Arduino IDE 2
-2. Seleziona scheda **Arduino UNO Q**
-3. Carica lo sketch
+2. Installa la libreria **Modulino** da Gestione librerie
+3. Seleziona scheda **Arduino UNO Q**
+4. Carica lo sketch
 
-### Python
+### 2. Python
 ```bash
 pip install pyserial opencv-python pillow requests
 python python/leggi_seriale.py
@@ -69,9 +75,9 @@ python python/leggi_seriale.py
 
 | Parametro | Valore default | Descrizione |
 |---|---|---|
-| `SOGLIA_PIENA_CM` | 20 cm | Distanza acqua → barriera su |
-| `SOGLIA_ATTENZIONE_CM` | 40 cm | Distanza acqua → attenzione |
-| `PARATIA_DURATA` | 3000 ms | Quanto resta in posizione la paratia |
+| `SOGLIA_PIENA_MM` | 200 mm | Distanza acqua → barriera su |
+| `SOGLIA_ATTENZIONE_MM` | 400 mm | Distanza acqua → attenzione |
+| `PARATIA_DURATA_MS` | 3000 ms | Quanto resta in posizione la paratia |
 | `SOGLIA_CONFIDENZA` (Python) | 65% | Confidenza minima AI per agire |
 
 ## Team
