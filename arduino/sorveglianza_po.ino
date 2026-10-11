@@ -1,187 +1,183 @@
 // ============================================================
 // Sistema di Sorveglianza Murazzi - HackTurin 2026
 // Hardware: Arduino UNO Q + Arduino Media Carrier
-// Modulino Distance  (VL53L4CD  - Time of Flight, I2C/Qwiic)
-// Sensore movimento  PIR (HC-SR501 o compatibile)
-// Servo SG90 x2 (barriera murazzi + paratia detriti)
+// Comunicazione con Python via Bridge (Arduino_RouterBridge)
 //
 // COLLEGAMENTO:
 //   Modulino Distance  → connettore Qwiic della Media Carrier
-//   PIR OUT            → Pin 7 | VCC → 5V | GND → GND
-//   Servo barriera     → Pin 5 | VCC → 5V | GND → GND
-//   Servo paratia      → Pin 6 | VCC → 5V | GND → GND
-//   LED alert          → Pin 13 (integrato)
+//   PIR                → connettore Grove D2
+//   LED ROSSO          → Pin 3
+//   LED GIALLO         → Pin 4
+//   LED VERDE          → Pin 5
+//   Servo paratia SX   → Pin 9  | VCC → 5V | GND → GND
+//   Servo paratia DX   → Pin 10 | VCC → 5V | GND → GND
+//   Servo barriera     → Pin 11 | VCC → 5V | GND → GND
 //
-// LIBRERIE NECESSARIE (Arduino IDE → Gestione librerie):
-//   - Modulino  (by Arduino)
-//   - Servo     (inclusa nell'IDE)
+// LIBRERIE NECESSARIE:
+//   - Arduino_RouterBridge  (by Arduino)
+//   - Modulino              (by Arduino)
+//   - Servo                 (inclusa nell'IDE)
 // ============================================================
 
+#include "Arduino_RouterBridge.h"
 #include <Modulino.h>
 #include <Servo.h>
 
-// --- OGGETTI MODULINO ---
-ModulinoDistance distance;   // VL53L4CD - livello acqua
+// --- MODULINO ---
+ModulinoDistance distance;
 
-// --- SENSORE MOVIMENTO PIR ---
-#define PIN_PIR   7
+// --- PIR ---
+#define PIN_PIR   2
 
-// --- SERVO ---
+// --- LED ---
+#define LED_ROSSO   3
+#define LED_GIALLO  4
+#define LED_VERDE   5
+
+// --- SERVO PARATIE ---
+Servo servoSX;
+Servo servoDX;
+#define PIN_SERVO_SX        9
+#define PIN_SERVO_DX        10
+#define PARATIA_RIPOSO      90
+#define PARATIA_SX_CHIUSA   45
+#define PARATIA_DX_CHIUSA   135
+#define PARATIA_DURATA_MS   30000
+
+// --- SERVO BARRIERA ---
 Servo servoBarriera;
-Servo servoParatia;
+#define PIN_SERVO_BARRIERA  11
+#define BARRIERA_GIU        0
+#define BARRIERA_SU         90
+bool barriera_alzata = false;
 
-#define PIN_SERVO_BARRIERA  5
-#define PIN_SERVO_PARATIA   6
-#define LED_ALERT           13
-
-// --- SOGLIE LIVELLO ACQUA ---
-// Il VL53L4CD misura in millimetri (range 0-1200mm)
-// Più l'acqua sale, più la distanza DIMINUISCE
-#define SOGLIA_PIENA_MM       200   // < 200mm (~20cm) → piena, barriera su
-#define SOGLIA_ATTENZIONE_MM  400   // < 400mm (~40cm) → attenzione
-
-// --- POSIZIONI SERVO ---
-#define BARRIERA_GIU        0    // barriera abbassata (accesso libero)
-#define BARRIERA_SU         90   // barriera alzata (accesso bloccato)
-#define PARATIA_RIPOSO      90   // paratia neutra
-#define PARATIA_SINISTRA    45   // devia detriti da sinistra verso centro
-#define PARATIA_DESTRA      135  // devia detriti da destra verso centro
-#define PARATIA_DURATA_MS   3000 // ms in posizione prima di tornare a riposo
+// --- SOGLIE ---
+#define SOGLIA_PIENA_MM       200
+#define SOGLIA_ATTENZIONE_MM  1000
 
 // --- TIMING ---
-#define INTERVALLO_MS         1000  // lettura sensori ogni secondo
-#define TIMEOUT_PIR_MS        8000  // PIR rimane "attivo" per 8 secondi
+#define INTERVALLO_MS     1000
+#define TIMEOUT_PIR_MS    8000
 
-// --- VARIABILI ---
-bool     barriera_alzata   = false;
-bool     movimento_attivo  = false;
-unsigned long ultimo_loop  = 0;
-unsigned long ultimo_pir   = 0;
+// --- STATO GLOBALE (letto da Python via Bridge) ---
+int   g_distanza_mm    = -1;
+int   g_movimento      = 0;
+char  g_livello[12]    = "NORMALE";
+
+unsigned long ultimo_loop = 0;
+unsigned long ultimo_pir  = 0;
+
+// ============================================================
+// FUNZIONI BRIDGE — chiamate da Python
+// ============================================================
+
+// Python chiama get_distanza() → restituisce distanza in mm
+int get_distanza() {
+  return g_distanza_mm;
+}
+
+// Python chiama get_movimento() → 1 se c'è movimento, 0 altrimenti
+int get_movimento() {
+  return g_movimento;
+}
+
+// Python chiama get_livello() → "NORMALE" / "ATTENZIONE" / "PIENA"
+const char* get_livello() {
+  return g_livello;
+}
+
+// Python chiama attiva_paratie() quando AI rileva detriti
+void attiva_paratie() {
+  servoSX.write(PARATIA_SX_CHIUSA);
+  servoDX.write(PARATIA_DX_CHIUSA);
+  Monitor.println("PARATIE_CHIUSE");
+  delay(PARATIA_DURATA_MS);
+  servoSX.write(PARATIA_RIPOSO);
+  servoDX.write(PARATIA_RIPOSO);
+  Monitor.println("PARATIE_APERTE");
+}
 
 // ============================================================
 void setup() {
-  Serial.begin(9600);
+  Bridge.begin();
+  Monitor.begin();
 
-  // Inizializza bus I2C e Modulino
   Modulino.begin();
   distance.begin();
 
-  // PIR
-  pinMode(PIN_PIR, INPUT);
+  pinMode(PIN_PIR,    INPUT);
+  pinMode(LED_ROSSO,  OUTPUT);
+  pinMode(LED_GIALLO, OUTPUT);
+  pinMode(LED_VERDE,  OUTPUT);
 
-  // Servo
+  servoSX.attach(PIN_SERVO_SX);
+  servoDX.attach(PIN_SERVO_DX);
+  servoSX.write(PARATIA_RIPOSO);
+  servoDX.write(PARATIA_RIPOSO);
+
   servoBarriera.attach(PIN_SERVO_BARRIERA);
-  servoParatia.attach(PIN_SERVO_PARATIA);
   servoBarriera.write(BARRIERA_GIU);
-  servoParatia.write(PARATIA_RIPOSO);
 
-  pinMode(LED_ALERT, OUTPUT);
+  // Registra le funzioni chiamabili da Python
+  Bridge.provide_safe("get_distanza",   get_distanza);
+  Bridge.provide_safe("get_movimento",  get_movimento);
+  Bridge.provide_safe("get_livello",    get_livello);
+  Bridge.provide_safe("attiva_paratie", attiva_paratie);
 
-  Serial.println("=== Sistema Murazzi Po - HackTurin 2026 ===");
-  Serial.println("PRONTO");
+  Monitor.println("=== Sistema Murazzi Po - HackTurin 2026 ===");
+  Monitor.println("Bridge pronto");
 }
 
 // ============================================================
 void loop() {
   unsigned long ora = millis();
-
   if (ora - ultimo_loop < INTERVALLO_MS) return;
   ultimo_loop = ora;
 
-  // --- 1. LETTURA DISTANZA (livello acqua) ---
-  int distanza_mm = -1;
+  // Lettura distanza
   if (distance.available()) {
-    distanza_mm = distance.get();  // valore in mm
+    g_distanza_mm = distance.get();
   }
 
-  String livello = valuta_livello(distanza_mm);
-
-  // --- 2. LETTURA PIR ---
+  // Lettura PIR
   if (digitalRead(PIN_PIR) == HIGH) {
     ultimo_pir = ora;
   }
-  // Rimane "attivo" per TIMEOUT_PIR_MS dopo l'ultimo rilevamento
-  movimento_attivo = (ora - ultimo_pir < TIMEOUT_PIR_MS);
+  g_movimento = (ora - ultimo_pir < TIMEOUT_PIR_MS) ? 1 : 0;
 
-  // --- 3. GESTIONE BARRIERA MURAZZI ---
-  gestisci_barriera(livello);
-
-  // --- 4. INVIA STATO A PYTHON ---
-  invia_stato(ora, distanza_mm, livello, movimento_attivo);
-
-  // --- 5. LEGGI COMANDI DA PYTHON (AI camera) ---
-  if (Serial.available() > 0) {
-    String cmd = Serial.readStringUntil('\n');
-    cmd.trim();
-    gestisci_comando_ai(cmd);
+  // Valuta livello
+  if (g_distanza_mm < 0) {
+    strcpy(g_livello, "ERRORE");
+  } else if (g_distanza_mm <= SOGLIA_PIENA_MM) {
+    strcpy(g_livello, "PIENA");
+  } else if (g_distanza_mm <= SOGLIA_ATTENZIONE_MM) {
+    strcpy(g_livello, "ATTENZIONE");
+  } else {
+    strcpy(g_livello, "NORMALE");
   }
-}
 
-// ============================================================
-// Valuta livello acqua in base alla distanza
-// ============================================================
-String valuta_livello(int dist_mm) {
-  if (dist_mm < 0)                      return "ERRORE";
-  if (dist_mm <= SOGLIA_PIENA_MM)       return "PIENA";
-  if (dist_mm <= SOGLIA_ATTENZIONE_MM)  return "ATTENZIONE";
-  return "NORMALE";
-}
+  // LED semaforo
+  digitalWrite(LED_ROSSO,  LOW);
+  digitalWrite(LED_GIALLO, LOW);
+  digitalWrite(LED_VERDE,  LOW);
 
-// ============================================================
-// Gestisce la barriera murazzi (servo + LED)
-// ============================================================
-void gestisci_barriera(String livello) {
-  if (livello == "PIENA" && !barriera_alzata) {
-    servoBarriera.write(BARRIERA_SU);
-    barriera_alzata = true;
-    digitalWrite(LED_ALERT, HIGH);
-    Serial.println("CMD:BARRIERA_ALZATA");
+  if (strcmp(g_livello, "NORMALE") == 0) {
+    digitalWrite(LED_VERDE, HIGH);
+  } else if (strcmp(g_livello, "ATTENZIONE") == 0) {
+    digitalWrite(LED_GIALLO, HIGH);
+  } else if (strcmp(g_livello, "PIENA") == 0) {
+    digitalWrite(LED_ROSSO, HIGH);
+    // Gestione barriera
+    if (!barriera_alzata) {
+      servoBarriera.write(BARRIERA_SU);
+      barriera_alzata = true;
+      Monitor.println("BARRIERA_ALZATA");
+    }
+  }
 
-  } else if (livello == "NORMALE" && barriera_alzata) {
+  if (strcmp(g_livello, "NORMALE") == 0 && barriera_alzata) {
     servoBarriera.write(BARRIERA_GIU);
     barriera_alzata = false;
-    digitalWrite(LED_ALERT, LOW);
-    Serial.println("CMD:BARRIERA_ABBASSATA");
+    Monitor.println("BARRIERA_ABBASSATA");
   }
-
-  // LED lampeggia in ATTENZIONE
-  if (livello == "ATTENZIONE") {
-    digitalWrite(LED_ALERT, (millis() / 500) % 2);
-  }
-}
-
-// ============================================================
-// Riceve comandi da Python dopo analisi AI camera
-// ============================================================
-void gestisci_comando_ai(String cmd) {
-  if (cmd == "DETRITO_SX") {
-    servoParatia.write(PARATIA_SINISTRA);
-    Serial.println("CMD:PARATIA_SX");
-    delay(PARATIA_DURATA_MS);
-    servoParatia.write(PARATIA_RIPOSO);
-    Serial.println("CMD:PARATIA_RIPOSO");
-
-  } else if (cmd == "DETRITO_DX") {
-    servoParatia.write(PARATIA_DESTRA);
-    Serial.println("CMD:PARATIA_DX");
-    delay(PARATIA_DURATA_MS);
-    servoParatia.write(PARATIA_RIPOSO);
-    Serial.println("CMD:PARATIA_RIPOSO");
-
-  } else if (cmd == "IMBARCAZIONE") {
-    Serial.println("CMD:IMBARCAZIONE_OK");
-  }
-}
-
-// ============================================================
-// Invia stato CSV a Python
-// Formato: DATI:timestamp,distanza_mm,livello,movimento,barriera
-// ============================================================
-void invia_stato(unsigned long ts, int dist, String livello, bool mov) {
-  Serial.print("DATI:");
-  Serial.print(ts);       Serial.print(",");
-  Serial.print(dist);     Serial.print(",");
-  Serial.print(livello);  Serial.print(",");
-  Serial.print(mov ? "1" : "0"); Serial.print(",");
-  Serial.println(barriera_alzata ? "1" : "0");
 }
