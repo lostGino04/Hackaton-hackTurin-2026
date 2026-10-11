@@ -18,7 +18,7 @@ class StateTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name)
         (self.root/'config').mkdir()
-        (self.root/'config/peripherals.json').write_bytes((ROOT/'applab/PO_Debris_AI/config/peripherals.json').read_bytes())
+        (self.root/'config/peripherals.json').write_bytes((ROOT/'app/config/peripherals.json').read_bytes())
         self.time=100;self.bridge=Bridge();self.gate=threading.Event()
         self.p=Peripherals(self.root,self.gate,self.bridge,clock=lambda:self.time)
         self.p.step()

@@ -1,0 +1,3 @@
+app/model/** -text
+packages/*.zip -text
+app/vendor/*.whl -text
