@@ -1,0 +1,100 @@
+{
+  "source": "runs/rft_pretrained/weights/best.pt",
+  "weights_sha256": "bd23f47d3087a49200113843fa6b6243af6909e13a15db560e57d470b7402bdb",
+  "initialization": "official YOLO11n COCO pretrained",
+  "fine_tuning_dataset": "RFT only",
+  "epochs_completed": 101,
+  "best_validation_epoch": 76,
+  "selection": "validation mAP50-95 only; patience 25, maximum 150",
+  "test_images": 474,
+  "test_metrics": {
+    "precision": 0.7034095796403921,
+    "recall": 0.7400242607245167,
+    "mAP50": 0.7456426750387918,
+    "mAP50_95": 0.4577998020597686
+  },
+  "operating_30": {
+    "images": 30,
+    "confidence": 0.1,
+    "iou_match": 0.5,
+    "true_positives": 36,
+    "false_positives": 38,
+    "false_negatives": 5,
+    "precision": 0.4864864864864865,
+    "recall": 0.8780487804878049
+  },
+  "tiling": false,
+  "exports": {
+    "source": "runs/rft_pretrained/weights/best.pt",
+    "sha256": "bd23f47d3087a49200113843fa6b6243af6909e13a15db560e57d470b7402bdb",
+    "batch": 1,
+    "fp32": true,
+    "sizes": {
+      "320": {
+        "directory": "applab\\recovery_exports\\320\\best_ncnn_model",
+        "parity": {
+          "shape": [
+            12,
+            2100
+          ],
+          "max_box_error_pixels": 0.000640869140625,
+          "mean_box_error_pixels": 2.9240363801363856e-05,
+          "max_score_error": 3.1888484954833984e-06,
+          "finite": true,
+          "passed": true
+        }
+      },
+      "416": {
+        "directory": "applab\\recovery_exports\\416\\best_ncnn_model",
+        "parity": {
+          "shape": [
+            12,
+            3549
+          ],
+          "max_box_error_pixels": 0.000457763671875,
+          "mean_box_error_pixels": 2.9090811949572526e-05,
+          "max_score_error": 2.562999725341797e-06,
+          "finite": true,
+          "passed": true
+        }
+      },
+      "640": {
+        "directory": "applab\\recovery_exports\\640\\best_ncnn_model",
+        "parity": {
+          "shape": [
+            12,
+            8400
+          ],
+          "max_box_error_pixels": 0.0015716552734375,
+          "mean_box_error_pixels": 3.467673377599567e-05,
+          "max_score_error": 1.2218952178955078e-06,
+          "finite": true,
+          "passed": true
+        }
+      }
+    }
+  },
+  "deployment_verified": true,
+  "files_sha256": {
+    "model/best.pt": "bd23f47d3087a49200113843fa6b6243af6909e13a15db560e57d470b7402bdb",
+    "model/live-ncnn/metadata.yaml": "2b803633f9b026a88f81ebcc56f90f6618a8a02bdae2fc9c3cb0313d6a2bd1b5",
+    "model/live-ncnn/model.ncnn.bin": "507a5fd28876efe2534a7caee5c02073471e4b9a3bd20366958d0433c1366895",
+    "model/live-ncnn/model.ncnn.param": "09a5338df0c52cfa7888fc6547f138484c7e74d47ac690d99c4ff4a711262800",
+    "model/live-ncnn/model_ncnn.py": "56ce93c18a57459bd7c337530e8fd2ea23d0bc4438e9233fe405c2f55ada881a",
+    "model/ncnn-320/metadata.yaml": "7ea4320ff2996e9381156a27f2743ce17d5a2562b523d79a3c3e9bd41cfadef7",
+    "model/ncnn-320/model.ncnn.bin": "12b5087e5c593c28fb9b6c1b887f2d106eca88e8594468812475bb597be47143",
+    "model/ncnn-320/model.ncnn.param": "76297bed75ecc2bfa12da148b8b55f43d8e0b6955a1377df1f9aa27418a681b3",
+    "model/ncnn-320/model_ncnn.py": "a7948f71be2dba29c60a56d6afd720657d7fd56d7a4c2eabb6ef2f731cc2d3cc",
+    "model/ncnn-416/metadata.yaml": "a986be3d4c17594caaeb734f97beafb39160e6407d4302fb4cf4c986f36e9719",
+    "model/ncnn-416/model.ncnn.bin": "364d7b26cfb0596a539c859db177b261d062e70be58022c0cccfc28eb1b2c202",
+    "model/ncnn-416/model.ncnn.param": "393574de2a98c36be26cbc02e02fede5896fcfeb64e588b29b660d6f4ba239f2",
+    "model/ncnn-416/model_ncnn.py": "b725f2a900a395203391526cbdc57b49fe4498bf3161e8e55ba0553a84dd36c0"
+  },
+  "hardware_verification": {
+    "weights_sha256": "bd23f47d3087a49200113843fa6b6243af6909e13a15db560e57d470b7402bdb",
+    "backup": "/home/arduino/po-debris-backups/20261011_005822",
+    "offline_ncnn_verified": true,
+    "live_verified": true,
+    "live_benchmark": "applab/recovery_verification/live-benchmark.json"
+  }
+}

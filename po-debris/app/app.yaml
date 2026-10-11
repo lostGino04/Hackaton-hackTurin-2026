@@ -1,0 +1,6 @@
+name: PO-DEBRIS AI
+description: Rilevamento locale RFT con YOLO11 NCNN e camera IMX219 CSI
+icon: 🌊
+ports: []
+bricks:
+  - arduino:web_ui: {}

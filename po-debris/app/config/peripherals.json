@@ -1,0 +1,20 @@
+{
+  "event_confidence": 0.55,
+  "consecutive_detections": 2,
+  "periodic_seconds": 8.0,
+  "inference_window_seconds": 6.0,
+  "cooldown_seconds": 10.0,
+  "rearm_empty_frames": 3,
+  "pir_warmup_seconds": 30.0,
+  "tof_trigger_mm": 600,
+  "tof_release_mm": 750,
+  "oled_controller": "unknown",
+  "oled_bus": 0,
+  "oled_address": 60,
+  "servo_enabled": false,
+  "servo_home_1": 90,
+  "servo_active_1": 95,
+  "servo_home_2": 90,
+  "servo_active_2": 95,
+  "servo_hold_ms": 450
+}

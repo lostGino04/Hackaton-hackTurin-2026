@@ -84,3 +84,7 @@ python python/leggi_seriale.py
 
 - **lostGino04**
 - **coricciatigiada**
+
+## PO-DEBRIS AI — applicazione App Lab
+
+La componente AI pronta per UNO Q, con modello YOLO RFT già addestrato, camera IMX219 e pacchetti importabili, è in [po-debris/](po-debris/README.md). Include la versione camera/AI verificata e una versione periferiche con sketch compilato ma ancora da collaudare fisicamente. I collegamenti e l'architettura RouterBridge sono descritti nella cartella: prima di unificare gli sketch verificare le differenze rispetto ai pin e alla webcam indicati sopra.

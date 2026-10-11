@@ -1,0 +1,27 @@
+description: Ultralytics YOLO11n model trained on /content/po_debris_gpu/data/RFT_YOLO/pretrained.yaml
+author: Ultralytics
+date: '2026-10-11T00:46:11.818791+02:00'
+version: 8.4.175
+license: AGPL-3.0 License (https://ultralytics.com/license)
+docs: https://docs.ultralytics.com
+stride: 32
+task: detect
+head: Detect
+batch: 1
+imgsz:
+- 320
+- 320
+names:
+  0: bottle
+  1: grass
+  2: branch
+  3: milk-box
+  4: plastic-bag
+  5: plastic-garbage
+  6: ball
+  7: leaf
+args:
+  batch: 1
+  quantize: null
+channels: 3
+end2end: false

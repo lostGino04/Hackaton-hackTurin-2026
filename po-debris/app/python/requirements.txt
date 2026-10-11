@@ -1,0 +1,5 @@
+# OpenCV con GStreamer fornito dalla base ufficiale App Lab: non sostituirlo.
+# NCNN 1.0.20260526: wheel ufficiale ARM64 in vendor/, installata offline
+# da main.py con --no-deps per preservare OpenCV/GStreamer della base.
+# PyYAML 6.0.3 e NumPy sono già forniti da python-apps-base 0.12.0.
+# Nessun download PyPI richiesto durante Run.
