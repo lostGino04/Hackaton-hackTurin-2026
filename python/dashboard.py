@@ -2,54 +2,52 @@
 #
 # SPDX-License-Identifier: MPL-2.0
 
-from arduino.app_utils import App, Bridge
 from arduino.app_bricks.streamlit_ui import st
 from datetime import datetime
+import urllib.request
+import json
 
 # ============================================================
-# CONTATORE DETRITI — persiste tra i refresh grazie a st.session_state
-# Si azzera automaticamente ogni giorno (a mezzanotte)
+# DATI DAL SISTEMA AI (engine del collega)
+# L'app PO-DEBRIS espone i dati sull'API /api/status (porta 7000).
+# Da qui leggiamo:
+#   - count   → numero di detriti rilevati dall'AI
+#   - tof_mm  → distanza misurata dal Modulino Distance (livello acqua)
 # ============================================================
-if "contatore_detriti" not in st.session_state:
-    st.session_state.contatore_detriti = 0
-    st.session_state.data_reset        = datetime.now().date()
-    st.session_state.movimento_prec    = 0
+API_URL = "http://127.0.0.1:7000/api/status"
 
-# Azzera il contatore ogni nuovo giorno
-if datetime.now().date() > st.session_state.data_reset:
-    st.session_state.contatore_detriti = 0
-    st.session_state.data_reset        = datetime.now().date()
-
-# ============================================================
-# DATI DA ARDUINO via Bridge
-# ============================================================
 try:
-    distanza_mm     = Bridge.call("get_distanza")
-    movimento       = Bridge.call("get_movimento")
-    livello_arduino = Bridge.call("get_livello")
-    livello_m       = max(0.0, 2.5 - (distanza_mm / 1000.0)) if distanza_mm > 0 else 0.0
+    with urllib.request.urlopen(API_URL, timeout=1) as r:
+        data = json.loads(r.read().decode())
+    perif      = data.get("peripherals", {})
+    hardware   = perif.get("hardware", {})
+    contatore  = int(perif.get("count", 0))
+    tof_mm     = hardware.get("tof_mm", -1)
+    tof_valid  = hardware.get("tof_valid", False)
+
+    # Conversione distanza → livello acqua.
+    # Sensore a 340mm da terra, scala 1:20 (2m reali = 10mm modellino)
+    if tof_valid and tof_mm > 0:
+        livello_modellino_mm = max(0.0, 340.0 - tof_mm)
+        livello_m            = livello_modellino_mm * 20.0 / 1000.0  # metri reali
+    else:
+        livello_m = 0.0
 
 except Exception:
-    distanza_mm     = -1
-    movimento       = 0
-    livello_arduino = "NORMALE"
-    livello_m       = 0.65
+    contatore = 0
+    tof_mm    = -1
+    livello_m = 0.0
 
-# Aggiorna contatore: incrementa solo al fronte di salita del movimento
-# (evita di contare più volte lo stesso detrito)
-if movimento == 1 and st.session_state.movimento_prec == 0:
-    st.session_state.contatore_detriti += 1
-st.session_state.movimento_prec = movimento
-
-contatore = st.session_state.contatore_detriti
-
-# Calcola livello detriti dal contatore
+# Livello detriti dal contatore AI
 if contatore <= 5:
     livello_detriti = 1   # lieve / assente
 elif contatore <= 20:
     livello_detriti = 2   # moderata
 else:
     livello_detriti = 3   # elevata
+
+# Data per il reset giornaliero (mostrata in interfaccia)
+reset_str = datetime.now().date().strftime("%d/%m/%Y")
 
 # ============================================================
 # CALCOLI LIVELLO ACQUA
@@ -80,7 +78,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🌊 Sistema di Sorveglianza del Po (Murazzi - Torino)")
+st.title("Sistema di Sorveglianza del Po (Murazzi - Torino)")
 st.markdown("### Sistema di monitoraggio delle piene e dei detriti")
 
 col_sx, col_dx = st.columns([1, 2], gap="large")
@@ -98,9 +96,6 @@ with col_sx:
     sr = "box-shadow:0 0 24px 10px #e74c3c;" if livello_detriti == 3 else ""
     sg = "box-shadow:0 0 24px 10px #f1c40f;" if livello_detriti == 2 else ""
     sv = "box-shadow:0 0 24px 10px #2ecc71;" if livello_detriti <= 1 else ""
-
-    contatore_str = str(contatore)
-    reset_str     = st.session_state.data_reset.strftime("%d/%m/%Y")
 
     st.markdown(
         '<div style="background:#111;border:4px solid #555;border-radius:24px;'

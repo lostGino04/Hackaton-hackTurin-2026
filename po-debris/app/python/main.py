@@ -85,6 +85,20 @@ def main():
     ui.expose_api('GET', '/frame.jpg', frame)
     ui.expose_api('GET', '/stream.mjpg', stream)
     ui.expose_api('GET', '/export.csv', export)
+
+    # --- Dati dal mio sketch (sorveglianza_po.ino) via Bridge ---
+    def murazzi():
+        from arduino.app_utils import Bridge
+        out = {"distanza_mm": -1, "movimento": 0, "livello": "ERRORE"}
+        try:
+            out["distanza_mm"] = Bridge.call("get_distanza", timeout=1)
+            out["movimento"]   = Bridge.call("get_movimento", timeout=1)
+            out["livello"]     = Bridge.call("get_livello", timeout=1)
+        except Exception as exc:
+            out["error"] = str(exc)
+        return out
+
+    ui.expose_api('GET', '/api/murazzi', murazzi)
     App.run()
 
 if __name__ == '__main__':

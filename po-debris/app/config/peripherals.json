@@ -5,7 +5,7 @@
   "inference_window_seconds": 6.0,
   "cooldown_seconds": 10.0,
   "rearm_empty_frames": 3,
-  "pir_warmup_seconds": 30.0,
+  "pir_warmup_seconds": 3.0,
   "tof_trigger_mm": 600,
   "tof_release_mm": 750,
   "oled_controller": "unknown",

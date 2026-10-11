@@ -2,9 +2,56 @@
 <html lang="it"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PO-DEBRIS AI · River observatory</title>
 <style>
 :root{color-scheme:dark;font-family:Inter,Segoe UI,sans-serif;background:#07151d;color:#e9f3f6}*{box-sizing:border-box}body{margin:0}header{padding:25px 4%;border-bottom:1px solid #29414a;display:flex;justify-content:space-between;align-items:center}h1{font-size:24px;letter-spacing:2px;margin:0}header small{color:#90abb7}main{padding:24px 4%;max-width:1600px;margin:auto}.tag{padding:8px 12px;border:1px solid #3b646b;border-radius:30px;color:#64dac2;font-size:12px}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:20px 0}.card{background:#10242f;border:1px solid #29414a;border-radius:13px;padding:20px}.label{font-size:12px;color:#94afba;text-transform:uppercase;letter-spacing:1px}.number{font-size:38px;font-weight:600;margin:7px 0}.detail{color:#94afba;font-size:12px}.grid{display:grid;grid-template-columns:2fr 1fr;gap:20px}.video{padding:0;overflow:hidden;position:relative;min-height:300px;background:#0c2029}.video img{width:100%;display:block}.video .caption{padding:14px 20px;color:#94afba;font-size:12px}h2{font-size:16px;margin:0 0 16px}label{display:block;margin:16px 0;font-size:13px}input{width:100%;accent-color:#50d7ba}button,a.button{background:#4fe0bc;color:#07251e;padding:10px 15px;border:0;border-radius:7px;text-decoration:none;cursor:pointer;font-weight:600}table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;padding:9px;border-bottom:1px solid #29414a}canvas{width:100%;height:170px}.error{color:#ffaf89;white-space:pre-wrap}.foot{font-size:12px;color:#91a8b0;margin:20px 0;line-height:1.7}.lower{margin-top:20px}.statusline{font-size:13px;line-height:1.8;overflow-wrap:anywhere}@media(max-width:850px){.grid{grid-template-columns:1fr}.metrics{grid-template-columns:1fr 1fr}}
-select,input:not([type=range]){display:block;width:100%;box-sizing:border-box;background:#102832;color:#e5eff2;border:1px solid #36535d;border-radius:6px;padding:9px;margin-top:6px}</style>
+select,input:not([type=range]){display:block;width:100%;box-sizing:border-box;background:#102832;color:#e5eff2;border:1px solid #36535d;border-radius:6px;padding:9px;margin-top:6px}
+.murazzi{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:20px 0}
+.semaforo-box{background:#111;border:4px solid #555;border-radius:24px;width:110px;padding:18px 0;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:14px}
+.semaforo-box div{width:68px;height:68px;border-radius:50%}
+.barra-wrap{display:flex;align-items:flex-start;gap:24px;margin-top:16px}
+.barra{position:relative;width:80px;height:260px;border:3px solid #555;border-radius:8px;overflow:hidden;background:#111;flex-shrink:0}
+.barra>div{position:absolute;left:0;right:0}
+.scala{position:relative;height:260px;font-size:12px;color:#aaa;flex-shrink:0}
+.scala>div{position:absolute;white-space:nowrap}</style>
 <header><div><h1>PO-DEBRIS <span style="color:#50d7ba">AI</span></h1><small>HackTurin 2026 / Osservatorio sul Po</small></div><span class="tag" id="state">IN ATTESA</span></header>
 <main><div class="label">Visione locale · River Floating Trash · 8 categorie</div>
+
+<div class="murazzi">
+  <div class="card">
+    <h2>🗑️ Quantità di Detriti</h2>
+    <div class="semaforo-box">
+      <div id="sem-rosso"></div>
+      <div id="sem-giallo"></div>
+      <div id="sem-verde"></div>
+    </div>
+    <h3 id="detriti-label" style="text-align:center"></h3>
+    <p style="text-align:center;font-size:28px;font-weight:600;margin:4px 0" id="detriti-count"></p>
+    <p style="text-align:center;color:#aaa;font-size:14px" id="detriti-reset"></p>
+    <p style="text-align:center;font-size:13px" id="pir-stato"></p>
+  </div>
+  <div class="card">
+    <h2>💧 Livello dell'Acqua</h2>
+    <div class="barra-wrap">
+      <div class="barra">
+        <div style="bottom:80%;height:20%;background:#5c0a0a"></div>
+        <div style="bottom:40%;height:40%;background:#5c4a00"></div>
+        <div style="bottom:8%;height:32%;background:#0a4a1f"></div>
+        <div style="bottom:4%;height:4%;background:#5c4a00"></div>
+        <div style="bottom:0;height:4%;background:#5c0a0a"></div>
+        <div id="indicatore" style="height:4px;background:white;box-shadow:0 0 10px 4px white;bottom:0%"></div>
+      </div>
+      <div class="scala">
+        <div style="bottom:99%">2.50 m</div>
+        <div style="bottom:80%">🔴 2.00 m — Piena</div>
+        <div style="bottom:40%">🟡 1.00 m — Attenzione</div>
+        <div style="bottom:8%">🟢 0.20 m — Normale</div>
+        <div style="bottom:4%">🟡 0.10 m — Basso</div>
+        <div style="bottom:0%">🔴 0.00 m — Secca</div>
+      </div>
+    </div>
+    <h3 id="livello-label" style="text-align:center;white-space:nowrap;margin-top:16px"></h3>
+    <p style="text-align:center;color:#90abb7;font-size:12px" id="tof-debug"></p>
+  </div>
+</div>
+
 <div class="metrics"><div class="card"><div class="label">CAMERA</div><div class="number" id="cameraFps">—</div><div class="detail">FPS di acquisizione reali</div></div><div class="card"><div class="label">AI</div><div class="number" id="fps">—</div><div class="detail">Inferenze al secondo reali</div></div><div class="card"><div class="label">INFERENZA</div><div class="number" id="ms">—</div><div class="detail">Millisecondi, inclusa NMS</div></div><div class="card"><div class="label">OGGETTI NELL'ULTIMO FRAME AI</div><div class="number"><span id="artificial">—</span> / <span id="organic">—</span></div><div class="detail">Artificiali / naturali · conteggio istantaneo</div></div></div><div class="grid"><div class="card video"><img id="live" alt="Nessun frame disponibile; verificare lo stato acquisizione"><div class="caption" id="caption">Il video compare dopo la prima acquisizione reale.</div></div><div class="card"><h2>Controllo acquisizione</h2><div class="statusline" id="health">Connessione in corso…</div><p class="error" id="error"></p><label>Confidence <output id="confValue">0.35</output><input id="conf" type="range" min="0.05" max="0.95" step="0.01" value="0.35"></label><label>IoU <output id="iouValue">0.50</output><input id="iou" type="range" min="0.05" max="0.95" step="0.01" value="0.50"></label><label>Input YOLO <select id="imgsz"><option value="320">320 × 320 · FAST</option><option value="416" selected>416 × 416 · DEFAULT</option><option value="640">640 × 640</option></select></label><p class="detail">Una sola inferenza per frame. Letterboxing conserva le proporzioni. Camera 1280 × 720, anteprima 640 × 360. Tracking e registrazione video disattivati.</p><button id="apply">Applica e salva</button><p><a class="button" href="/export.csv" download="po-debris.csv">Esporta CSV</a></p></div></div>
 <div class="grid lower"><div class="card"><h2>Oggetti visibili nel tempo</h2><canvas id="chart" width="1000" height="170"></canvas><div class="detail">Arancio: artificiali · Verde: naturali · Ultimi 180 frame elaborati</div></div><div class="card"><h2>Classi rilevate · ultimo frame AI</h2><table><thead><tr><th>Tipo</th><th>Classe</th><th>Confidence</th></tr></thead><tbody id="objects"></tbody></table></div></div>
 <p class="foot">Camera e AI lavorano separatamente; viene elaborato solo l'ultimo frame disponibile. I box rappresentano l'ultima inferenza e scompaiono se hanno più di 2 secondi. Nessun tracking, nessun conteggio cumulativo e nessuna registrazione video. YOLO11n pretrained: test RFT mAP50 74,6% a 640. La qualità sul Po richiede una valutazione reale.</p></main>
@@ -13,5 +60,46 @@ const $=id=>document.getElementById(id);let initialized=false, streaming=false;
 for(const key of ['conf','iou'])$(key).oninput=()=>$(key+'Value').textContent=Number($(key).value).toFixed(2);
 $('apply').onclick=async()=>{try{const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({conf:+$('conf').value,iou:+$('iou').value,imgsz:+$('imgsz').value})});if(!r.ok)throw Error('Soglie non valide');$('error').textContent='';}catch(e){$('error').textContent=e.message;}};
 function chart(history){const c=$('chart'),ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);const max=Math.max(1,...history.flatMap(p=>[p.artificial,p.organic]));ctx.strokeStyle='#29414a';ctx.beginPath();ctx.moveTo(25,10);ctx.lineTo(25,145);ctx.lineTo(990,145);ctx.stroke();ctx.fillStyle='#94afba';ctx.font='12px sans-serif';ctx.fillText(max,2,16);ctx.fillText('0',5,145);for(const [key,color] of [['artificial','#ffb347'],['organic','#50d7ba']]){ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();history.forEach((p,i)=>{const x=25+i/Math.max(1,history.length-1)*965,y=145-p[key]/max*130;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();}}
-async function poll(){try{const r=await fetch('/api/status');if(!r.ok)throw Error('Backend non raggiungibile');const s=await r.json();$('state').textContent=s.state.toUpperCase();$('artificial').textContent=s.counts.artificial;$('organic').textContent=s.counts.organic;$('cameraFps').textContent=s.camera_fps??'—';$('fps').textContent=s.ai_fps??'—';$('ms').textContent=s.inference_ms??'—';$('health').textContent=`Camera: ${s.camera} · Modello: ${s.model}`;$('caption').textContent=`${s.mode} · ${s.quality} · Frame ${s.frame} · ${s.resolution?s.resolution.join(' × '):'risoluzione non disponibile'}`;$('error').textContent=s.error||'';if(!initialized){for(const key of ['conf','iou']){$(key).value=s.config[key];$(key+'Value').textContent=s.config[key].toFixed(2);}$('imgsz').replaceChildren(...s.supported_sizes.map(size=>{const o=document.createElement('option');o.value=size;o.textContent=size+' × '+size+(size===320?' · FAST':size===416?' · DEFAULT':'');return o;}));$('imgsz').value=s.config.imgsz;initialized=true;}if(s.timestamp&&!streaming){$('live').src='/stream.mjpg';streaming=true;}$('objects').replaceChildren(...s.detections.map(d=>{const row=document.createElement('tr');for(const value of [d.group==='organic'?'Naturale':'Artificiale',d.class,(100*d.confidence).toFixed(1)+'%']){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}return row;}));chart(s.history);}catch(e){$('state').textContent='DISCONNESSO';$('error').textContent=e.message;}setTimeout(poll,1000);}poll();
+async function poll(){try{const r=await fetch('/api/status');if(!r.ok)throw Error('Backend non raggiungibile');const s=await r.json();$('state').textContent=s.state.toUpperCase();$('artificial').textContent=s.counts.artificial;$('organic').textContent=s.counts.organic;$('cameraFps').textContent=s.camera_fps??'—';$('fps').textContent=s.ai_fps??'—';$('ms').textContent=s.inference_ms??'—';$('health').textContent=`Camera: ${s.camera} · Modello: ${s.model}`;$('caption').textContent=`${s.mode} · ${s.quality} · Frame ${s.frame} · ${s.resolution?s.resolution.join(' × '):'risoluzione non disponibile'}`;$('error').textContent=s.error||'';if(!initialized){for(const key of ['conf','iou']){$(key).value=s.config[key];$(key+'Value').textContent=s.config[key].toFixed(2);}$('imgsz').replaceChildren(...s.supported_sizes.map(size=>{const o=document.createElement('option');o.value=size;o.textContent=size+' × '+size+(size===320?' · FAST':size===416?' · DEFAULT':'');return o;}));$('imgsz').value=s.config.imgsz;initialized=true;}if(s.timestamp&&!streaming){$('live').src='/stream.mjpg';streaming=true;}$('objects').replaceChildren(...s.detections.map(d=>{const row=document.createElement('tr');for(const value of [d.group==='organic'?'Naturale':'Artificiale',d.class,(100*d.confidence).toFixed(1)+'%']){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}return row;}));chart(s.history);try{const rm=await fetch('/api/murazzi');if(rm.ok)window.murazziData=await rm.json();}catch(_){}aggiornaMurazzi(s);}catch(e){$('state').textContent='DISCONNESSO';$('error').textContent=e.message;}setTimeout(poll,1000);}
+function aggiornaMurazzi(s){
+  const perif=s.peripherals||{};const hw=perif.hardware||{};
+  // --- DETRITI (semaforo) ---
+  const count=perif.count||0;
+  let liv;if(count<=5)liv=1;else if(count<=20)liv=2;else liv=3;
+  $('sem-rosso').style.background =liv===3?'#e74c3c':'#2d0000';
+  $('sem-giallo').style.background=liv===2?'#f1c40f':'#2d2500';
+  $('sem-verde').style.background =liv<=1 ?'#2ecc71':'#002d10';
+  $('sem-rosso').style.boxShadow =liv===3?'0 0 24px 10px #e74c3c':'none';
+  $('sem-giallo').style.boxShadow=liv===2?'0 0 24px 10px #f1c40f':'none';
+  $('sem-verde').style.boxShadow =liv<=1 ?'0 0 24px 10px #2ecc71':'none';
+  const labD={1:'Lieve / Assente',2:'Moderata',3:'Elevata'};
+  const colD={1:'#2ecc71',2:'#f1c40f',3:'#e74c3c'};
+  $('detriti-label').textContent=labD[liv];$('detriti-label').style.color=colD[liv];
+  $('detriti-count').textContent=count+(count===1?' detrito':' detriti');
+  $('detriti-count').style.color=colD[liv];
+  $('detriti-reset').textContent='Reset: '+new Date().toLocaleDateString('it-IT');
+  // Stato PIR (movimento) dal MIO sketch + stato inferenza AI
+  const pirOn=window.murazziData && window.murazziData.movimento==1;
+  const stIA=(perif.state||'').toUpperCase();
+  $('pir-stato').textContent='PIR: '+(pirOn?'🟢 movimento':'⚪ fermo')+' · '+(stIA||'—');
+  $('pir-stato').style.color=pirOn?'#2ecc71':'#90abb7';
+  // --- LIVELLO ACQUA (barra) dal MIO sketch (get_distanza) ---
+  // Sensore a 340mm da terra, scala 1:20 (2m reali = 10mm modellino)
+  let livello_m=0;
+  const md=window.murazziData;
+  if(md && md.distanza_mm>0){const mod=Math.max(0,340-md.distanza_mm);livello_m=mod*20/1000;}
+  const pct=Math.min(livello_m/2.5*100,100);
+  $('indicatore').style.bottom=pct.toFixed(1)+'%';
+  let stato,col;
+  if(livello_m<0.10){stato='SECCA';col='#e74c3c';}
+  else if(livello_m<0.20){stato='BASSO';col='#f1c40f';}
+  else if(livello_m<=1.00){stato='NORMALE';col='#2ecc71';}
+  else if(livello_m<=2.00){stato='ATTENZIONE';col='#f1c40f';}
+  else{stato='PIENA';col='#e74c3c';}
+  $('livello-label').textContent=livello_m.toFixed(2)+' m — '+stato;
+  $('livello-label').style.color=col;
+  // Debug sensore: mostra il valore grezzo e se è valido
+  $('tof-debug').textContent='Sensore (mio sketch): distanza_mm='+(md?md.distanza_mm:'—')+(md&&md.error?' · errore: '+md.error:'');
+}
+poll();
 </script></html>

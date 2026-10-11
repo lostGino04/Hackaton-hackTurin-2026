@@ -52,8 +52,16 @@ Servo servoBarriera;
 bool barriera_alzata = false;
 
 // --- SOGLIE ---
-#define SOGLIA_PIENA_MM       200
-#define SOGLIA_ATTENZIONE_MM  1000
+// Scala modellino 1:20 (2m reali = 10cm modellino)
+// Sensore a 340mm da terra → distanza = 340 - livello_modellino
+//
+// Livello reale → livello modellino → distanza sensore
+//   0.10m reali →  0.5mm → distanza < 340mm (≈340)
+//   0.20m reali →  1.0mm → distanza < 339mm
+//   1.00m reali →  5.0mm → distanza < 335mm  ← soglia attenzione
+//   2.00m reali → 10.0mm → distanza < 330mm  ← soglia piena
+#define SOGLIA_PIENA_MM       330   // reale: 2.00m
+#define SOGLIA_ATTENZIONE_MM  335   // reale: 1.00m
 
 // --- TIMING ---
 #define INTERVALLO_MS     1000
